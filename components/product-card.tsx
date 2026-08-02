@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Product } from '@/lib/store'
-import { ShoppingCart, AlertCircle } from 'lucide-react'
+import { ShoppingCart } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 
 interface ProductCardProps {
   product: Product
@@ -12,17 +14,14 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
+  const router = useRouter()
   const [isAdding, setIsAdding] = useState(false)
-  const [showModal, setShowModal] = useState(false)
 
-  const handleAddToCart = () => {
+  const handleBuyNow = () => {
     setIsAdding(true)
-    setTimeout(() => {
-      onAddToCart(product)
-      setIsAdding(false)
-      setShowModal(true)
-      setTimeout(() => setShowModal(false), 2000)
-    }, 300)
+    onAddToCart(product)
+    toast.success(`${product.name} added — heading to checkout`)
+    router.push('/checkout')
   }
 
   return (
@@ -81,42 +80,20 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
               <span className="text-xs text-muted-foreground">FCFA</span>
             </div>
 
-            {/* Add to Cart Button */}
+            {/* Buy Now Button */}
             <motion.button
-              onClick={handleAddToCart}
+              onClick={handleBuyNow}
               disabled={isAdding}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="w-full bg-accent text-accent-foreground py-2.5 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-accent/90 disabled:opacity-50 transition-all"
             >
               <ShoppingCart className="w-4 h-4" />
-              {isAdding ? 'Adding...' : 'BUY NOW'}
+              {isAdding ? 'Redirecting...' : 'BUY NOW'}
             </motion.button>
           </div>
         </div>
       </motion.div>
-
-      {/* Add to Cart Notification */}
-      {showModal && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8 }}
-          className="fixed inset-0 flex items-center justify-center pointer-events-none z-50"
-        >
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl max-w-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold">Added to Cart!</h3>
-            </div>
-            <p className="text-sm text-muted-foreground">{product.name} has been added to your cart.</p>
-          </div>
-        </motion.div>
-      )}
     </>
   )
 }

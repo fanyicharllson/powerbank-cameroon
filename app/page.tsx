@@ -4,19 +4,20 @@ import Header from '@/components/header'
 import Footer from '@/components/footer'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ShoppingCart, ChevronRight, Check, Truck, Headphones } from 'lucide-react'
 import { useCartStore } from '@/lib/store'
 import { PRODUCTS } from '@/lib/products'
-import { useState } from 'react'
+import { toast } from 'sonner'
 
 export default function Home() {
+  const router = useRouter()
   const { addToCart } = useCartStore()
-  const [notification, setNotification] = useState<string | null>(null)
 
-  const handleAddToCart = (product: any) => {
+  const handleBuyNow = (product: any) => {
     addToCart(product, 1)
-    setNotification(`${product.name} added to cart!`)
-    setTimeout(() => setNotification(null), 2000)
+    toast.success(`${product.name} added — heading to checkout`)
+    router.push('/checkout')
   }
 
   return (
@@ -42,7 +43,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight break-words">
                 NEVER RUN
                 <br />
                 <span className="text-yellow-400">OUT OF POWER</span>
@@ -63,24 +64,24 @@ export default function Home() {
               </Link>
 
               {/* Trust Badges */}
-              <div className="grid grid-cols-3 gap-4 mt-12 max-w-sm">
-                <div className="flex items-center gap-2">
-                  <Check className="w-6 h-6 text-yellow-400 flex-shrink-0" />
-                  <div className="text-sm">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-12 max-w-sm">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <Check className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400 flex-shrink-0" />
+                  <div className="text-xs sm:text-sm min-w-0">
                     <div className="font-bold">100%</div>
                     <div>Genuine</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Truck className="w-6 h-6 text-yellow-400 flex-shrink-0" />
-                  <div className="text-sm">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400 flex-shrink-0" />
+                  <div className="text-xs sm:text-sm min-w-0">
                     <div className="font-bold">Fast</div>
                     <div>Delivery</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Headphones className="w-6 h-6 text-yellow-400 flex-shrink-0" />
-                  <div className="text-sm">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <Headphones className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400 flex-shrink-0" />
+                  <div className="text-xs sm:text-sm min-w-0">
                     <div className="font-bold">24/7</div>
                     <div>Support</div>
                   </div>
@@ -95,19 +96,19 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="flex items-center justify-center h-96 relative"
             >
-              <div className="flex items-end justify-center gap-4 h-full relative">
+              <div className="flex items-end justify-center gap-2 sm:gap-4 h-full relative">
                 {/* Left Product */}
                 <motion.div
                   animate={{ y: [10, 0, 10] }}
                   transition={{ duration: 3, repeat: Infinity }}
-                  className="w-28 bg-white rounded-lg shadow-lg overflow-hidden"
+                  className="w-20 sm:w-28 bg-white rounded-lg shadow-lg overflow-hidden"
                 >
-                  <div className="bg-gradient-to-b from-gray-200 to-gray-300 h-32 flex items-center justify-center">
-                    <div className="w-16 h-20 bg-gray-700 rounded-sm"></div>
+                  <div className="bg-gradient-to-b from-gray-200 to-gray-300 h-24 sm:h-32 flex items-center justify-center">
+                    <div className="w-12 h-16 sm:w-16 sm:h-20 bg-gray-700 rounded-sm"></div>
                   </div>
-                  <div className="p-2 text-center text-gray-900">
+                  <div className="p-1.5 sm:p-2 text-center text-gray-900">
                     <div className="text-xs font-bold bg-green-600 text-white rounded px-1 mb-1">10K</div>
-                    <div className="text-xs">10,000mAh</div>
+                    <div className="text-[10px] sm:text-xs">10,000mAh</div>
                   </div>
                 </motion.div>
 
@@ -115,15 +116,15 @@ export default function Home() {
                 <motion.div
                   animate={{ y: [-10, 0, -10] }}
                   transition={{ duration: 3, repeat: Infinity }}
-                  className="w-32 bg-white rounded-lg shadow-2xl overflow-hidden transform scale-110"
+                  className="w-24 sm:w-32 bg-white rounded-lg shadow-2xl overflow-hidden transform sm:scale-110"
                 >
-                  <div className="bg-gradient-to-b from-gray-100 to-gray-200 h-40 flex items-center justify-center">
-                    <div className="w-18 h-24 bg-gray-900 rounded-sm"></div>
+                  <div className="bg-gradient-to-b from-gray-100 to-gray-200 h-28 sm:h-40 flex items-center justify-center">
+                    <div className="w-14 h-18 sm:w-18 sm:h-24 bg-gray-900 rounded-sm"></div>
                   </div>
-                  <div className="p-3 text-center text-gray-900">
+                  <div className="p-2 sm:p-3 text-center text-gray-900">
                     <div className="text-xs font-bold bg-green-600 text-white rounded px-1 mb-1">20K</div>
-                    <div className="text-xs">20,000mAh</div>
-                    <div className="font-bold text-sm mt-1">Popular</div>
+                    <div className="text-[10px] sm:text-xs">20,000mAh</div>
+                    <div className="font-bold text-xs sm:text-sm mt-1">Popular</div>
                   </div>
                 </motion.div>
 
@@ -131,14 +132,14 @@ export default function Home() {
                 <motion.div
                   animate={{ y: [8, 0, 8] }}
                   transition={{ duration: 3.5, repeat: Infinity }}
-                  className="w-28 bg-blue-900 rounded-lg shadow-lg overflow-hidden"
+                  className="w-20 sm:w-28 bg-blue-900 rounded-lg shadow-lg overflow-hidden"
                 >
-                  <div className="bg-gradient-to-b from-blue-800 to-blue-900 h-32 flex items-center justify-center">
-                    <div className="w-16 h-20 bg-gray-800 rounded-sm"></div>
+                  <div className="bg-gradient-to-b from-blue-800 to-blue-900 h-24 sm:h-32 flex items-center justify-center">
+                    <div className="w-12 h-16 sm:w-16 sm:h-20 bg-gray-800 rounded-sm"></div>
                   </div>
-                  <div className="p-2 text-center text-white">
+                  <div className="p-1.5 sm:p-2 text-center text-white">
                     <div className="text-xs font-bold bg-green-500 rounded px-1 mb-1">30K</div>
-                    <div className="text-xs">30,000mAh</div>
+                    <div className="text-[10px] sm:text-xs">30,000mAh</div>
                   </div>
                 </motion.div>
               </div>
@@ -204,7 +205,7 @@ export default function Home() {
 
                 {/* Button */}
                 <button
-                  onClick={() => handleAddToCart(product)}
+                  onClick={() => handleBuyNow(product)}
                   className="w-full py-2 bg-yellow-400 text-black font-bold rounded-lg hover:bg-yellow-300 transition-all text-sm flex items-center justify-center gap-2"
                 >
                   <ShoppingCart className="w-4 h-4" />
@@ -226,18 +227,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Notification Toast */}
-      {notification && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          className="fixed top-24 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg"
-        >
-          {notification}
-        </motion.div>
-      )}
 
       <Footer />
     </div>

@@ -5,17 +5,19 @@ import Header from '@/components/header'
 import Footer from '@/components/footer'
 import { Mail, Phone, MapPin, Send } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useContact, ContactFormData } from '@/hooks/use-contact'
+
+const initialFormData: ContactFormData = {
+  name: '',
+  email: '',
+  phone: '',
+  subject: '',
+  message: '',
+}
 
 export default function ContactPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    subject: '',
-    message: '',
-  })
-  const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState<ContactFormData>(initialFormData)
+  const { mutate, isPending } = useContact()
 
   const handleChange = (e: any) => {
     const { name, value } = e.target
@@ -25,27 +27,9 @@ export default function ContactPage() {
     }))
   }
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault()
-    setLoading(true)
-
-    try {
-      // Simulate form submission
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      setSubmitted(true)
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        subject: '',
-        message: '',
-      })
-      setTimeout(() => setSubmitted(false), 5000)
-    } catch (error) {
-      console.error('Form submission error:', error)
-    } finally {
-      setLoading(false)
-    }
+    mutate(formData, { onSuccess: () => setFormData(initialFormData) })
   }
 
   return (
@@ -139,17 +123,6 @@ export default function ContactPage() {
               viewport={{ once: true }}
             >
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Success Message */}
-                {submitted && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-green-50 border border-green-200 rounded-lg p-4 text-green-800"
-                  >
-                    Thank you for your message! We'll get back to you soon.
-                  </motion.div>
-                )}
-
                 {/* Name */}
                 <div>
                   <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
@@ -237,12 +210,12 @@ export default function ContactPage() {
                 {/* Submit Button */}
                 <motion.button
                   type="submit"
-                  disabled={loading}
+                  disabled={isPending}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? (
+                  {isPending ? (
                     <>
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       Sending...

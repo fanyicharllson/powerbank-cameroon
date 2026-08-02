@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { motion } from "framer-motion";
 import { Search, Filter, ShoppingCart, ChevronRight } from "lucide-react";
 import { useCartStore } from "@/lib/store";
 import { PRODUCTS } from "@/lib/products";
+import { toast } from "sonner";
 
 // Skeleton Loader Component
 function ProductSkeleton() {
@@ -27,11 +29,11 @@ function ProductSkeleton() {
 }
 
 export default function ProductsPage() {
+  const router = useRouter();
   const { addToCart } = useCartStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCapacity, setSelectedCapacity] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [notification, setNotification] = useState<string | null>(null);
 
   // Simulate loading delay for skeleton loaders
   const handleFilterChange = () => {
@@ -61,10 +63,10 @@ export default function ProductsPage() {
     handleFilterChange();
   };
 
-  const handleAddToCart = (product: any) => {
+  const handleBuyNow = (product: any) => {
     addToCart(product, 1);
-    setNotification(`${product.name} added to cart!`);
-    setTimeout(() => setNotification(null), 2000);
+    toast.success(`${product.name} added — heading to checkout`);
+    router.push("/checkout");
   };
 
   const capacities = ["10K", "20K", "30K", "65W"];
@@ -192,7 +194,7 @@ export default function ProductsPage() {
 
                   {/* Button */}
                   <button
-                    onClick={() => handleAddToCart(product)}
+                    onClick={() => handleBuyNow(product)}
                     className="w-full py-2 bg-yellow-400 text-black font-bold rounded-lg hover:bg-yellow-300 transition-all text-sm flex items-center justify-center gap-2"
                   >
                     <ShoppingCart className="w-4 h-4" />
@@ -211,18 +213,6 @@ export default function ProductsPage() {
           </div>
         </div>
       </section>
-
-      {/* Notification Toast */}
-      {notification && (
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 50 }}
-          className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg"
-        >
-          {notification}
-        </motion.div>
-      )}
 
       <Footer />
     </div>

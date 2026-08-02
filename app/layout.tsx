@@ -1,11 +1,12 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import { Toaster } from 'sonner'
+import { Providers } from './providers'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Powerbank Cameroon - Never Run Out Of Power',
   description: 'Never run out of power. Reliable powerbanks with fast delivery across Cameroon.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
@@ -35,7 +36,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="antialiased">
-        {children}
+        <Providers>
+          {children}
+          <Toaster richColors position="top-center" />
+        </Providers>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

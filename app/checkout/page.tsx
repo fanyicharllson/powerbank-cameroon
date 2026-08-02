@@ -10,6 +10,8 @@ import { sendWhatsAppNotification, formatWhatsAppMessage, generateOrderId } from
 import { ChevronLeft, ChevronRight, Trash2, AlertCircle, ShoppingCart, User, MapPin, CreditCard, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
+const PHONE_COUNTRY_CODE = '+237'
+
 export default function CheckoutPage() {
   const cart = useCartStore((state) => state.cart)
   const setOrderData = useCartStore((state) => state.setOrderData)
@@ -386,15 +388,21 @@ export default function CheckoutPage() {
                         <label className="block text-sm font-semibold text-foreground mb-2">Phone Number *</label>
                         <div className="flex gap-2">
                           <select className="px-4 py-3 bg-background border border-border rounded-lg text-foreground">
-                            <option>+237</option>
+                            <option>{PHONE_COUNTRY_CODE}</option>
                           </select>
                           <input
                             type="tel"
                             placeholder="6 78 123 456"
-                            value={formData.phone}
+                            maxLength={9}
+                            value={formData.phone.replace(PHONE_COUNTRY_CODE, '')}
                             onChange={(e) => {
-                              setFormData({ ...formData, phone: e.target.value })
-                              if (errors.phone) delete errors.phone
+                              const digits = e.target.value.replace(/\D/g, '').replace(/^0+/, '')
+                              setFormData({ ...formData, phone: `${PHONE_COUNTRY_CODE}${digits}` })
+                              if (errors.phone) setErrors((prev) => {
+                                const next = { ...prev }
+                                delete next.phone
+                                return next
+                              })
                             }}
                             className={`flex-1 px-4 py-3 bg-background border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent transition-colors ${
                               errors.phone ? 'border-destructive' : 'border-border'
