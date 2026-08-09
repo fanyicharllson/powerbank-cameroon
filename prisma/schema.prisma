@@ -25,10 +25,107 @@ model Category {
 }
 
 model Product {
-  id         String   @id @default(cuid())
-  name       String
-  price      Int
-  category   Category @relation(fields: [categoryId], references: [id])
-  categoryId String
-  createdAt  DateTime @default(now())
+  id            String      @id
+  name          String
+  price         Int
+  capacity      String      @default("")
+  capacityMah   Int         @default(0)
+  chargingSpeed String      @default("")
+  features      String[]    @default([])
+  image         String      @default("")
+  badge         String?
+  isActive      Boolean     @default(true)
+  category      Category    @relation(fields: [categoryId], references: [id])
+  categoryId    String
+  orderItems    OrderItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_IN_PROGRESS
+  PAID
+  CANCELLED
+  FULFILLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  MTN_MOMO
+  ORANGE_MONEY
+  CASH
+}
+
+model Order {
+  id                String               @id @default(cuid())
+  orderNumber       String               @unique
+  idempotencyKey    String               @unique
+  fullName          String
+  phone             String
+  region            String
+  city              String
+  quarter           String
+  address           String
+  landmark          String?
+  paymentMethod     PaymentMethod
+  status            OrderStatus          @default(PENDING_PAYMENT)
+  subtotal          Int
+  markupBps         Int
+  installmentMonths Int
+  monthlyPayment    Int
+  installmentTotal  Int
+  firstPayment      Int
+  amountPaid        Int                  @default(0)
+  items             OrderItem[]
+  installments      InstallmentPayment[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([phone])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id              String  @id @default(cuid())
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId         String
+  product         Product @relation(fields: [productId], references: [id])
+  productId       String
+  productName     String
+  productCapacity String
+  productImage    String
+  unitPrice       Int
+  quantity        Int
+  lineTotal       Int
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model InstallmentPayment {
+  id                String        @id @default(cuid())
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId           String
+  installmentNumber Int
+  amount            Int
+  dueDate           DateTime
+  status            PaymentStatus @default(PENDING)
+  paidAt            DateTime?
+  transactionRef    String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([orderId, installmentNumber])
+  @@index([status, dueDate])
 }

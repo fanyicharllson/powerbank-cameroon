@@ -108,6 +108,13 @@ pnpm install
 cp .env.example .env.local
 ```
 
+Set `DATABASE_URL` to a PostgreSQL connection string, then prepare the database:
+```bash
+pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
+```
+
 4. Run the development server:
 ```bash
 pnpm dev
@@ -130,8 +137,17 @@ pnpm start
 # Lint code
 pnpm lint
 
-# Format code
-pnpm format
+# Generate Prisma Client
+pnpm db:generate
+
+# Create/apply development migrations
+pnpm db:migrate
+
+# Apply committed migrations in production
+pnpm db:deploy
+
+# Upsert the product catalog
+pnpm db:seed
 ```
 
 ## Usage
@@ -148,12 +164,14 @@ pnpm format
 3. Adjust quantities or remove items as needed
 
 ### Checkout Process
-1. Click "Continue" to proceed to customer information
-2. Enter your full name and phone number
-3. Provide delivery details (region, city, address)
-4. Select your preferred payment method
-5. Review order summary and place order
-6. Receive WhatsApp confirmation with order details
+1. Select a 2, 3, 4, or 6-month installment plan
+2. Enter customer and delivery details
+3. Select a preferred future payment method
+4. Click "Save order & continue"
+5. The REST API validates current database prices and stores the order, item snapshots, and full pending installment schedule atomically
+6. Review the database-backed confirmation and order number
+
+Order creation uses an idempotency key, so safely retrying a failed request cannot create duplicate orders.
 
 ### Contact & Support
 1. Click "CONTACT" in the header or footer
@@ -205,8 +223,21 @@ Delivery Fee: 2,000 FCFA
 ## Known Issues & Limitations
 
 - Demo uses mock WhatsApp numbers for testing
-- Orders are stored in localStorage (demo only - production will use database)
-- Payment processing is demo-only (integration needed)
+- Installment orders and schedules are persisted in PostgreSQL
+- Actual MTN Mobile Money, Orange Money, and cash collection are not yet integrated; new orders remain in `PENDING_PAYMENT`
+- Payment-provider callbacks, reconciliation, and automatic status updates are intentionally marked as TODO
+
+## Production Database Deployment
+
+Committed Prisma migrations must be applied before starting a new production release:
+
+```bash
+pnpm db:deploy
+pnpm db:seed
+pnpm start
+```
+
+The seed command uses stable product IDs and upserts, so it is safe to run repeatedly. Keep `DATABASE_URL` in the deployment platform's secret manager and never expose it to the browser.
 
 ## Contributing
 

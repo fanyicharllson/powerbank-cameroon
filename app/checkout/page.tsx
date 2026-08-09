@@ -18,6 +18,7 @@ import {
   CreditCard,
   Headphones,
   LockKeyhole,
+  LoaderCircle,
   Minus,
   Plus,
   ShieldCheck,
@@ -33,7 +34,7 @@ import Header from '@/components/header'
 import Footer from '@/components/footer'
 import { useCartStore, type CartItem, type OrderData } from '@/lib/store'
 import { CITIES, QUARTERS, REGIONS } from '@/lib/products'
-import { formatWhatsAppMessage, generateOrderId, sendWhatsAppNotification } from '@/lib/api'
+import { getOrderError, useCreateOrder } from '@/hooks/use-create-order'
 
 const PHONE_COUNTRY_CODE = '+237'
 const steps = [
@@ -63,13 +64,11 @@ export default function CheckoutPage() {
   const cartTotal = useCartStore((state) => state.getCartTotal())
   const updateCartQuantity = useCartStore((state) => state.updateCartQuantity)
   const removeFromCart = useCartStore((state) => state.removeFromCart)
-  const setOrderData = useCartStore((state) => state.setOrderData)
   const clearCart = useCartStore((state) => state.clearCart)
+  const createOrder = useCreateOrder()
   const [step, setStep] = useState(2)
   const [selectedPlan, setSelectedPlan] = useState(2)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [orderId, setOrderId] = useState('')
-  const [confirmedTotal, setConfirmedTotal] = useState(0)
+  const [idempotencyKey, setIdempotencyKey] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [selectedCities, setSelectedCities] = useState<string[]>([])
   const [selectedQuarters, setSelectedQuarters] = useState<string[]>([])
@@ -145,44 +144,36 @@ export default function CheckoutPage() {
   }
 
   const handlePlaceOrder = async () => {
-    setIsProcessing(true)
     setErrors({})
     try {
-      const installmentOrder: OrderData = {
-        ...formData,
-        installmentMonths: selectedPlan,
-        monthlyPayment,
-        installmentTotal,
-        firstPayment: dueToday,
-      }
-      setOrderData(installmentOrder)
-      const newOrderId = generateOrderId()
-      setOrderId(newOrderId)
-      setConfirmedTotal(installmentTotal)
-      const message = formatWhatsAppMessage(newOrderId, installmentOrder, cart, installmentTotal)
-      localStorage.setItem(
-        'lastOrder',
-        JSON.stringify({
-          orderId: newOrderId,
-          orderData: installmentOrder,
-          items: cart,
-          total: installmentTotal,
-          timestamp: new Date().toISOString(),
-        }),
-      )
-      await sendWhatsAppNotification(message, formData.phone)
+      const requestKey = idempotencyKey || crypto.randomUUID()
+      if (!idempotencyKey) setIdempotencyKey(requestKey)
+      await createOrder.mutateAsync({
+        idempotencyKey: requestKey,
+        customer: { fullName: formData.fullName, phone: formData.phone },
+        delivery: {
+          region: formData.region,
+          city: formData.city,
+          quarter: formData.quarter,
+          address: formData.address,
+          landmark: formData.landmark,
+        },
+        paymentMethod: formData.paymentMethod,
+        installmentMonths: selectedPlan as 2 | 3 | 4 | 6,
+        items: cart.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
+      })
       setStep(5)
       clearCart()
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
       console.error('Error placing order:', error)
-      setErrors({ submit: 'We could not place your order. Please try again.' })
-    } finally {
-      setIsProcessing(false)
+      setErrors({ submit: getOrderError(error).message })
     }
   }
 
-  if (step === 5) {
+  const confirmedOrder = createOrder.data?.order
+
+  if (step === 5 && confirmedOrder) {
     return (
       <>
         <Header />
@@ -190,7 +181,7 @@ export default function CheckoutPage() {
           <motion.section
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mx-auto max-w-xl overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)]"
+            className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)]"
           >
             <div className="bg-linear-to-br from-emerald-700 to-green-900 px-8 py-10 text-center text-white">
               <motion.div
@@ -201,21 +192,51 @@ export default function CheckoutPage() {
               >
                 <Check className="h-10 w-10" strokeWidth={3} />
               </motion.div>
-              <p className="mb-2 text-sm font-bold uppercase tracking-[0.22em] text-emerald-100">Order confirmed</p>
-              <h1 className="text-3xl font-black">Thank you for your order</h1>
-              <p className="mt-3 text-sm text-emerald-100">We’ll contact you on WhatsApp to confirm delivery.</p>
+              <div className="mx-auto mb-4 w-fit rounded-full bg-amber-300 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-amber-950">Awaiting payment</div>
+              <p className="mb-2 text-sm font-bold uppercase tracking-[0.22em] text-emerald-100">Order saved successfully</p>
+              <h1 className="text-3xl font-black">Your installment order is ready</h1>
+              <p className="mt-3 text-sm text-emerald-100">Your order and complete payment schedule are safely stored.</p>
             </div>
             <div className="p-7 sm:p-9">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-2">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                   <span className="text-sm text-slate-500">Order number</span>
-                  <span className="font-black text-slate-900">{orderId}</span>
+                  <span className="font-black text-slate-900">{confirmedOrder.orderNumber}</span>
                 </div>
-                <div className="flex items-center justify-between pt-4">
-                  <span className="text-sm text-slate-500">Order total</span>
-                  <span className="text-lg font-black text-emerald-700">{formatMoney(confirmedTotal)}</span>
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                  <span className="text-sm text-slate-500">Created</span>
+                  <span className="text-sm font-bold text-slate-900">{new Date(confirmedOrder.createdAt).toLocaleString()}</span>
+                </div>
+                <div><p className="text-xs text-slate-500">Customer</p><p className="mt-1 font-black text-slate-900">{confirmedOrder.customer.fullName}</p><p className="text-xs text-slate-500">{confirmedOrder.customer.phone}</p></div>
+                <div><p className="text-xs text-slate-500">Delivery</p><p className="mt-1 text-sm font-bold text-slate-900">{confirmedOrder.delivery.address}, {confirmedOrder.delivery.quarter}</p><p className="text-xs text-slate-500">{confirmedOrder.delivery.city}, {confirmedOrder.delivery.region}</p></div>
+              </div>
+
+              <div className="mt-6">
+                <h2 className="text-sm font-black text-slate-950">Products</h2>
+                <div className="mt-3 space-y-3">
+                  {confirmedOrder.items.map((item) => (
+                    <div key={item.productId} className="flex items-center justify-between rounded-xl border border-slate-200 p-4">
+                      <div><p className="text-sm font-black text-slate-900">{item.name}</p><p className="text-xs text-slate-500">{item.capacity} · Qty {item.quantity}</p></div>
+                      <p className="text-sm font-black text-slate-900">{formatMoney(item.lineTotal)}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-4">
+                <SummaryStat label="Plan" value={`${confirmedOrder.installmentMonths} months`} />
+                <SummaryStat label="Monthly" value={formatMoney(confirmedOrder.monthlyPayment)} />
+                <SummaryStat label="Due now" value={formatMoney(confirmedOrder.firstPayment)} highlight />
+                <SummaryStat label="Total" value={formatMoney(confirmedOrder.installmentTotal)} />
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <div className="flex gap-3">
+                  <CircleHelp className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                  <div><p className="text-sm font-black text-amber-950">Payment collection is coming next</p><p className="mt-1 text-xs leading-relaxed text-amber-800">No money has been charged yet. Your order is saved with an “Awaiting payment” status while Mobile Money processing is being integrated.</p></div>
+                </div>
+              </div>
+
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <Link href="/" className="rounded-xl bg-emerald-700 px-5 py-3.5 text-center text-sm font-bold text-white transition hover:bg-emerald-800">
                   Back to home
@@ -256,6 +277,7 @@ export default function CheckoutPage() {
   return (
     <>
       <Header />
+      {createOrder.isPending && <OrderProcessingOverlay />}
       <main className="min-h-screen bg-[#f7f9f8] pb-16">
         <div className="border-b border-slate-200 bg-white">
           <div className="mx-auto max-w-7xl px-4 py-9 sm:px-6 lg:px-8">
@@ -454,7 +476,12 @@ export default function CheckoutPage() {
                 </AnimatePresence>
 
                 {errors.cart && <ErrorMessage message={errors.cart} />}
-                {errors.submit && <ErrorMessage message={errors.submit} />}
+                {errors.submit && (
+                  <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
+                    <div className="flex gap-3 text-red-700"><AlertCircle className="h-5 w-5 shrink-0" /><div><p className="text-sm font-black">Your order was not saved</p><p className="mt-1 text-xs">{errors.submit}</p></div></div>
+                    <button type="button" onClick={handlePlaceOrder} className="mt-3 rounded-lg bg-red-700 px-4 py-2 text-xs font-black text-white hover:bg-red-800">Retry safely</button>
+                  </div>
+                )}
 
                 {step >= 2 && (
                   <div className="mt-7 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
@@ -474,8 +501,8 @@ export default function CheckoutPage() {
                       Continue <ArrowRight className="h-4 w-4" />
                     </button>
                   ) : (
-                    <button type="button" disabled={isProcessing} onClick={handlePlaceOrder} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-7 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-900/10 transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60">
-                      <LockKeyhole className="h-4 w-4" /> {isProcessing ? 'Placing order...' : 'Place secure order'}
+                    <button type="button" disabled={createOrder.isPending} onClick={handlePlaceOrder} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-7 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-900/10 transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60">
+                      <LockKeyhole className="h-4 w-4" /> {createOrder.isPending ? 'Saving order...' : 'Save order & continue'}
                     </button>
                   )}
                 </div>
@@ -557,6 +584,38 @@ export default function CheckoutPage() {
       </main>
       <Footer />
     </>
+  )
+}
+
+function OrderProcessingOverlay() {
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/65 px-4 backdrop-blur-sm">
+      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md rounded-3xl border border-white/10 bg-white p-8 text-center shadow-2xl">
+        <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
+          <LoaderCircle className="h-10 w-10 animate-spin text-emerald-700" />
+          <Zap className="absolute h-5 w-5 fill-emerald-700 text-emerald-700" />
+        </div>
+        <h2 className="mt-6 text-2xl font-black text-slate-950">Securing your order</h2>
+        <p className="mt-2 text-sm text-slate-500">Please keep this page open while we create your installment schedule.</p>
+        <div className="mt-6 space-y-3 text-left">
+          {['Validating your order details', 'Confirming current product prices', 'Creating your payment schedule'].map((label, index) => (
+            <motion.div key={label} initial={{ opacity: 0.35 }} animate={{ opacity: [0.35, 1, 0.35] }} transition={{ delay: index * 0.3, duration: 1.5, repeat: Infinity }} className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><Check className="h-3.5 w-3.5" /></span>
+              <span className="text-xs font-bold text-slate-700">{label}</span>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function SummaryStat({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className={`rounded-xl border p-4 ${highlight ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className={`mt-1 text-sm font-black ${highlight ? 'text-emerald-700' : 'text-slate-900'}`}>{value}</p>
+    </div>
   )
 }
 
