@@ -2,13 +2,22 @@ import { randomUUID } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import {
+  createOrderAccessToken,
+  getOrderAccessToken,
+  hashOrderAccessToken,
+  setOrderAccessCookie,
+} from '@/lib/order-access'
+import {
   INSTALLMENT_MARKUP_BPS,
   type CheckoutPaymentMethod,
   type CreateOrderResponse,
   type InstallmentMonths,
   type OrderApiError,
+  type OrderListResponse,
+  type TrackedOrderStatus,
   validateCreateOrderRequest,
 } from '@/lib/orders'
+import { getOrderOwner } from '@/lib/order-access'
 
 const MAX_BODY_BYTES = 32_000
 
@@ -51,7 +60,7 @@ function serializeOrder(order: PersistedOrder, idempotent: boolean): CreateOrder
     idempotent,
     order: {
       orderNumber: order.orderNumber,
-      status: 'PENDING_PAYMENT',
+      status: order.status as TrackedOrderStatus,
       createdAt: order.createdAt.toISOString(),
       customer: { fullName: order.fullName, phone: order.phone },
       delivery: {
@@ -119,10 +128,16 @@ export async function POST(request: NextRequest) {
   try {
     const existingOrder = await getOrderByIdempotencyKey(input.idempotencyKey)
     if (existingOrder) {
-      return NextResponse.json(serializeOrder(existingOrder, true), {
+      const response = NextResponse.json(serializeOrder(existingOrder, true), {
         status: 200,
         headers: { 'X-Request-Id': requestId },
       })
+      const existingToken = getOrderAccessToken(request)
+      if (existingToken && existingOrder.ownerId) {
+        const owner = await prisma.orderOwner.findUnique({ where: { tokenHash: hashOrderAccessToken(existingToken) } })
+        if (owner?.id === existingOrder.ownerId) setOrderAccessCookie(response, existingToken)
+      }
+      return response
     }
 
     const requestedIds = input.items.map((item) => item.productId)
@@ -153,8 +168,15 @@ export async function POST(request: NextRequest) {
         : monthlyPayment,
       dueDate: addMonths(now, index),
     }))
+    const accessToken = getOrderAccessToken(request) || createOrderAccessToken()
+    const accessTokenHash = hashOrderAccessToken(accessToken)
 
     const order = await prisma.$transaction(async (transaction) => {
+      const owner = await transaction.orderOwner.upsert({
+        where: { tokenHash: accessTokenHash },
+        update: { lastSeenAt: now },
+        create: { tokenHash: accessTokenHash, lastSeenAt: now },
+      })
       return transaction.order.create({
         data: {
           orderNumber: createOrderNumber(),
@@ -173,6 +195,7 @@ export async function POST(request: NextRequest) {
           monthlyPayment,
           installmentTotal,
           firstPayment: schedule[0].amount,
+          ownerId: owner.id,
           items: {
             create: input.items.map((item) => {
               const product = productMap.get(item.productId)!
@@ -194,23 +217,103 @@ export async function POST(request: NextRequest) {
     })
 
     // TODO(payment): initiate the selected Mobile Money charge after the order is safely persisted.
-    return NextResponse.json(serializeOrder(order, false), {
+    const response = NextResponse.json(serializeOrder(order, false), {
       status: 201,
       headers: { 'X-Request-Id': requestId },
     })
+    setOrderAccessCookie(response, accessToken)
+    return response
   } catch (error) {
     const isUniqueConflict = typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'
     if (isUniqueConflict) {
       const existingOrder = await getOrderByIdempotencyKey(input.idempotencyKey)
       if (existingOrder) {
-        return NextResponse.json(serializeOrder(existingOrder, true), {
+        const response = NextResponse.json(serializeOrder(existingOrder, true), {
           status: 200,
           headers: { 'X-Request-Id': requestId },
         })
+        const existingToken = getOrderAccessToken(request)
+        if (existingToken && existingOrder.ownerId) {
+          const owner = await prisma.orderOwner.findUnique({ where: { tokenHash: hashOrderAccessToken(existingToken) } })
+          if (owner?.id === existingOrder.ownerId) setOrderAccessCookie(response, existingToken)
+        }
+        return response
       }
     }
 
     console.error('Failed to create installment order', { requestId, error })
     return errorResponse(500, 'ORDER_CREATION_FAILED', 'We could not save your order. Please try again.', requestId)
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const requestId = randomUUID()
+
+  try {
+    const owner = await getOrderOwner(request)
+    if (!owner) {
+      return NextResponse.json<OrderListResponse>({
+        summary: { total: 0, awaitingPayment: 0, inProgress: 0, completed: 0 },
+        orders: [],
+      })
+    }
+
+    const [orders, total, awaitingPayment, inProgress, completed] = await prisma.$transaction([
+      prisma.order.findMany({
+        where: { ownerId: owner.id },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        include: {
+          items: { orderBy: { id: 'asc' } },
+          installments: { orderBy: { installmentNumber: 'asc' } },
+        },
+      }),
+      prisma.order.count({ where: { ownerId: owner.id } }),
+      prisma.order.count({ where: { ownerId: owner.id, status: 'PENDING_PAYMENT' } }),
+      prisma.order.count({ where: { ownerId: owner.id, status: 'PAYMENT_IN_PROGRESS' } }),
+      prisma.order.count({ where: { ownerId: owner.id, status: { in: ['PAID', 'FULFILLED'] } } }),
+      prisma.orderOwner.update({ where: { id: owner.id }, data: { lastSeenAt: new Date() } }),
+    ])
+
+    const response: OrderListResponse = {
+      summary: {
+        total,
+        awaitingPayment,
+        inProgress,
+        completed,
+      },
+      orders: orders.map((order) => {
+        const paidInstallments = order.installments.filter((item) => item.status === 'PAID').length
+        const nextPayment = order.installments.find((item) => item.status === 'PENDING')
+        return {
+          orderNumber: order.orderNumber,
+          status: order.status as TrackedOrderStatus,
+          createdAt: order.createdAt.toISOString(),
+          paymentMethod: reversePaymentMethodMap[order.paymentMethod],
+          installmentMonths: order.installmentMonths,
+          installmentTotal: order.installmentTotal,
+          amountPaid: order.amountPaid,
+          paidInstallments,
+          totalInstallments: order.installments.length,
+          nextPayment: nextPayment ? {
+            number: nextPayment.installmentNumber,
+            amount: nextPayment.amount,
+            dueDate: nextPayment.dueDate.toISOString(),
+          } : null,
+          items: order.items.map((item) => ({
+            productId: item.productId,
+            name: item.productName,
+            capacity: item.productCapacity,
+            image: item.productImage,
+            quantity: item.quantity,
+          })),
+        }
+      }),
+    }
+
+    return NextResponse.json(response, { headers: { 'X-Request-Id': requestId } })
+  } catch (error) {
+    console.error('Failed to list device orders', { requestId, error })
+    return errorResponse(500, 'ORDER_LIST_FAILED', 'We could not load your orders. Please try again.', requestId)
   }
 }

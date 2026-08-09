@@ -31,7 +31,7 @@ export interface CreateOrderRequest {
 
 export interface OrderConfirmation {
   orderNumber: string
-  status: 'PENDING_PAYMENT'
+  status: TrackedOrderStatus
   createdAt: string
   customer: {
     fullName: string
@@ -65,13 +65,58 @@ export interface OrderConfirmation {
     number: number
     amount: number
     dueDate: string
-    status: 'PENDING'
+    status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED'
   }>
 }
 
 export interface CreateOrderResponse {
   order: OrderConfirmation
   idempotent: boolean
+}
+
+export type TrackedOrderStatus =
+  | 'PENDING_PAYMENT'
+  | 'PAYMENT_IN_PROGRESS'
+  | 'PAID'
+  | 'CANCELLED'
+  | 'FULFILLED'
+
+export interface TrackedOrderSummary {
+  orderNumber: string
+  status: TrackedOrderStatus
+  createdAt: string
+  paymentMethod: CheckoutPaymentMethod
+  installmentMonths: number
+  installmentTotal: number
+  amountPaid: number
+  paidInstallments: number
+  totalInstallments: number
+  nextPayment: {
+    number: number
+    amount: number
+    dueDate: string
+  } | null
+  items: Array<{
+    productId: string
+    name: string
+    capacity: string
+    image: string
+    quantity: number
+  }>
+}
+
+export interface OrderListResponse {
+  summary: {
+    total: number
+    awaitingPayment: number
+    inProgress: number
+    completed: number
+  }
+  orders: TrackedOrderSummary[]
+}
+
+export interface OrderDetailResponse {
+  order: OrderConfirmation
 }
 
 export interface OrderApiError {

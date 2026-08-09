@@ -237,13 +237,12 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <Link href="/" className="rounded-xl bg-emerald-700 px-5 py-3.5 text-center text-sm font-bold text-white transition hover:bg-emerald-800">
-                  Back to home
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <Link href={`/orders/${confirmedOrder.orderNumber}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3.5 text-center text-sm font-black text-white transition hover:bg-emerald-800">
+                  Track this order <ArrowRight className="h-4 w-4" />
                 </Link>
-                <a href="https://wa.me/237678123456" target="_blank" rel="noreferrer" className="rounded-xl border border-slate-200 px-5 py-3.5 text-center text-sm font-bold text-slate-700 transition hover:border-emerald-600 hover:text-emerald-700">
-                  Get help
-                </a>
+                <Link href="/orders" className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-center text-sm font-black text-emerald-800 transition hover:bg-emerald-100">View My Orders</Link>
+                <Link href="/" className="rounded-xl border border-slate-200 px-5 py-3.5 text-center text-sm font-bold text-slate-700 transition hover:border-emerald-600 hover:text-emerald-700">Back to home</Link>
               </div>
             </div>
           </motion.section>

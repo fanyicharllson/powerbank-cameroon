@@ -1,16 +1,27 @@
 'use client'
 
 import axios from 'axios'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import type { CreateOrderRequest, CreateOrderResponse, OrderApiError } from '@/lib/orders'
+import { orderQueryKeys } from '@/hooks/use-orders'
 
 export function useCreateOrder() {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationKey: ['create-installment-order'],
     mutationFn: async (order: CreateOrderRequest) => {
       const response = await api.post<CreateOrderResponse>('/orders', order)
       return response.data
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: orderQueryKeys.all })
+      toast.success(`Order ${data.order.orderNumber} saved successfully.`)
+    },
+    onError: (error) => {
+      toast.error(getOrderError(error).message)
     },
   })
 }

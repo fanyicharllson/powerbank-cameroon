@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ShoppingCart, Zap, Menu, X } from 'lucide-react'
+import { PackageCheck, ShoppingCart, Zap, Menu, X } from 'lucide-react'
 import { useCartStore } from '@/lib/store'
 import { motion } from 'framer-motion'
+import { useOrders } from '@/hooks/use-orders'
 
 export default function Header() {
   const cartCount = useCartStore((state) => state.getCartCount())
+  const ordersQuery = useOrders()
+  const orderCount = ordersQuery.data?.summary.total ?? 0
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navItems = [
@@ -20,7 +23,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-green-900 shadow-lg">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 flex-shrink-0">
+        <Link href="/" className="flex shrink-0 items-center gap-3">
           <motion.div
             whileHover={{ rotate: 10 }}
             className="flex items-center gap-2"
@@ -51,6 +54,14 @@ export default function Header() {
 
         {/* Right Section */}
         <div className="flex items-center gap-4">
+          {ordersQuery.isPending && <div className="hidden h-10 w-28 animate-pulse rounded-xl bg-white/10 lg:block" />}
+          {orderCount > 0 && (
+            <Link href="/orders" className="hidden items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-800 px-4 py-2 text-xs font-black text-white shadow-inner transition hover:border-yellow-300 hover:text-yellow-300 lg:flex">
+              <PackageCheck className="h-4 w-4" />
+              MY ORDERS
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] text-green-950">{orderCount}</span>
+            </Link>
+          )}
           {/* WhatsApp Button */}
           <a
             href="https://wa.me/237678123456"
@@ -103,6 +114,12 @@ export default function Header() {
           className="md:hidden border-t border-green-700 bg-green-800"
         >
           <div className="px-4 py-4 space-y-2">
+            {orderCount > 0 && (
+              <Link href="/orders" className="mb-3 flex items-center justify-between rounded-xl border border-emerald-500 bg-emerald-900 px-3 py-3 text-sm font-black text-white" onClick={() => setMobileMenuOpen(false)}>
+                <span className="flex items-center gap-2"><PackageCheck className="h-4 w-4 text-yellow-300" />My Orders</span>
+                <span className="rounded-full bg-yellow-400 px-2 py-0.5 text-xs text-green-950">{orderCount}</span>
+              </Link>
+            )}
             {navItems.map((item) => (
               <a
                 key={item.label}

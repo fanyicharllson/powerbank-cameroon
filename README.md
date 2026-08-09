@@ -173,6 +173,14 @@ pnpm db:seed
 
 Order creation uses an idempotency key, so safely retrying a failed request cannot create duplicate orders.
 
+### Tracking Orders
+1. After saving an order, use “Track this order” for its detailed installment timeline
+2. Use “My Orders” in the navigation to view every order placed from the current browser
+3. The navigation button appears automatically when this device owns at least one order
+4. Order history includes payment progress, next installment, products, customer details, and delivery status
+
+Order history is account-free and protected by a random HttpOnly device cookie. The database stores only a SHA-256 hash of that token.
+
 ### Contact & Support
 1. Click "CONTACT" in the header or footer
 2. Fill out the contact form with your inquiry
@@ -214,7 +222,7 @@ Delivery Fee: 2,000 FCFA
 
 - [ ] Product reviews and ratings
 - [ ] Wishlist functionality
-- [ ] User accounts and order history
+- [ ] User accounts and cross-device order history
 - [ ] Inventory management dashboard
 - [ ] Email notifications
 - [ ] Promo codes and discounts
@@ -226,6 +234,8 @@ Delivery Fee: 2,000 FCFA
 - Installment orders and schedules are persisted in PostgreSQL
 - Actual MTN Mobile Money, Orange Money, and cash collection are not yet integrated; new orders remain in `PENDING_PAYMENT`
 - Payment-provider callbacks, reconciliation, and automatic status updates are intentionally marked as TODO
+- Order history is currently bound to the browser/device that placed the order
+- Clearing site cookies or switching devices removes access until authenticated customer accounts or OTP recovery are implemented
 
 ## Production Database Deployment
 
