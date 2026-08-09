@@ -33,8 +33,15 @@ export function formatWhatsAppMessage(
 
   message += `\n*💰 ORDER SUMMARY:*\n`
   message += `Subtotal: ${cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toLocaleString()} FCFA\n`
-  message += `Delivery: 2,000 FCFA\n`
-  message += `*Total: ${total.toLocaleString()} FCFA*\n\n`
+  if (orderData.installmentMonths) {
+    message += `Plan: ${orderData.installmentMonths} months\n`
+    message += `Monthly payment: ${orderData.monthlyPayment?.toLocaleString()} FCFA\n`
+    message += `Due today: ${orderData.firstPayment?.toLocaleString()} FCFA\n`
+    message += `*Total to pay: ${orderData.installmentTotal?.toLocaleString()} FCFA*\n\n`
+  } else {
+    message += `Delivery: 2,000 FCFA\n`
+    message += `*Total: ${total.toLocaleString()} FCFA*\n\n`
+  }
 
   message += `*👤 CUSTOMER INFO:*\n`
   message += `Name: ${orderData.fullName}\n`

@@ -26,6 +26,10 @@ export interface OrderData {
   address: string
   landmark?: string
   paymentMethod: 'mtn' | 'orange' | 'cod'
+  installmentMonths?: number
+  monthlyPayment?: number
+  installmentTotal?: number
+  firstPayment?: number
 }
 
 interface CartStore {
