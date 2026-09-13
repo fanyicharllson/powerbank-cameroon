@@ -38,50 +38,37 @@ Visit the live application at: [Powerbank Cameroon](https://vm-stael-shop.userco
 ## Technology Stack
 
 ### Frontend
-- **Next.js 16**: React framework with App Router
+- **Next.js 16**: React framework with App Router (storefront + admin apps)
 - **React 19**: Latest React features and optimizations
 - **TypeScript**: Type-safe development
 - **Tailwind CSS v4**: Utility-first CSS styling
-- **Framer Motion**: Smooth animations and transitions
+- **Framer Motion**: Smooth animations and transitions (storefront)
+- **Recharts**: Admin dashboard charts
 - **Lucide React**: Beautiful icon library
 
 ### State Management & Data Fetching
 - **Zustand**: Lightweight state management for cart
-- **React Query**: Server state management (installed, ready for API integration)
+- **React Query**: Server state for orders and admin dashboard
+
+### Backend / Data
+- **PostgreSQL + Prisma**: Shared `@stael/db` package
+- **pnpm workspaces**: Monorepo with separately hosted apps
 
 ### Development Tools
-- **Vercel**: Deployment platform
+- **Vercel**: Deploy storefront and admin as two projects
 - **pnpm**: Fast package manager
 
 ## Project Structure
 
 ```
 .
-├── app/
-│   ├── layout.tsx              # Root layout with metadata
-│   ├── page.tsx                # Homepage with hero and products
-│   ├── globals.css             # Global styles and design tokens
-│   ├── checkout/
-│   │   └── page.tsx            # 4-step checkout flow
-│   ├── products/
-│   │   └── page.tsx            # Products page with search & filter
-│   └── contact/
-│       └── page.tsx            # Contact form page
-├── components/
-│   ├── header.tsx              # Navigation header
-│   ├── footer.tsx              # Footer with links
-│   ├── hero.tsx                # Hero section
-│   ├── product-card.tsx        # Product card component
-│   ├── products-section.tsx    # Products grid section
-│   └── faq-section.tsx         # FAQ section (removed from nav)
-├── lib/
-│   ├── store.ts                # Zustand cart store
-│   ├── products.ts             # Product data
-│   └── api.ts                  # API utilities
-├── hooks/
-│   └── use-scroll-animation.ts # Scroll animation hook
-└── public/                     # Static assets
-
+├── apps/
+│   ├── storefront/             # Public website (port 3000)
+│   └── admin/                  # Admin dashboard (port 3001)
+├── packages/
+│   └── db/                     # Shared Prisma schema, client, seed
+├── pnpm-workspace.yaml
+└── .env.example
 ```
 
 ## Getting Started
@@ -98,57 +85,72 @@ git clone https://github.com/fanyicharllson/powerbank-cameroon.git
 cd powerbank-cameroon
 ```
 
-2. Install dependencies:
+2. Install dependencies (shared workspace `node_modules`):
 ```bash
 pnpm install
 ```
 
 3. Set up environment variables:
 ```bash
-cp .env.example .env.local
+cp .env.example .env
 ```
 
-Set `DATABASE_URL` to a PostgreSQL connection string, then prepare the database:
+Set at least:
+- `DATABASE_URL`
+- `ADMIN_SESSION_SECRET` (long random string)
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` (seeded admin login)
+
+Then prepare the database:
 ```bash
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
 ```
 
-4. Run the development server:
+4. Run apps:
 ```bash
-pnpm dev
+pnpm dev:storefront   # http://localhost:3000
+pnpm dev:admin        # http://localhost:3001
 ```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Available Scripts
 
 ```bash
-# Development server
-pnpm dev
+# Storefront
+pnpm dev:storefront
+pnpm build:storefront
+pnpm start:storefront
 
-# Production build
-pnpm build
+# Admin dashboard
+pnpm dev:admin
+pnpm build:admin
+pnpm start:admin
 
-# Start production server
-pnpm start
-
-# Lint code
-pnpm lint
-
-# Generate Prisma Client
+# Database (packages/db)
 pnpm db:generate
-
-# Create/apply development migrations
 pnpm db:migrate
-
-# Apply committed migrations in production
 pnpm db:deploy
-
-# Upsert the product catalog
 pnpm db:seed
+
+# Verify storefront order API
+pnpm verify:orders
 ```
+
+## Admin Dashboard
+
+- Separate Next.js app with Teknova-style responsive sidebar
+- Simple email/password admin auth (HttpOnly session cookie)
+- Overview KPIs, revenue chart, collection gauge, recent transactions
+- Orders list/detail with manual installment “mark paid”
+- Customer insights aggregated by phone
+- Customer storefront auth remains optional / out of scope
+
+### Separate hosting
+Create two Vercel (or similar) projects from this repo:
+- Storefront: root directory `apps/storefront`
+- Admin: root directory `apps/admin`
+
+Both need `DATABASE_URL`. Admin also needs `ADMIN_SESSION_SECRET`. Run `pnpm db:deploy` and `pnpm db:seed` against production once.
 
 ## Usage
 
@@ -222,20 +224,21 @@ Delivery Fee: 2,000 FCFA
 
 - [ ] Product reviews and ratings
 - [ ] Wishlist functionality
-- [ ] User accounts and cross-device order history
-- [ ] Inventory management dashboard
+- [ ] Optional customer accounts (client preference: keep guest checkout)
 - [ ] Email notifications
 - [ ] Promo codes and discounts
 - [ ] Multiple language support
+- [ ] Mobile Money payment capture + auto installment reconciliation
 
 ## Known Issues & Limitations
 
 - Demo uses mock WhatsApp numbers for testing
 - Installment orders and schedules are persisted in PostgreSQL
 - Actual MTN Mobile Money, Orange Money, and cash collection are not yet integrated; new orders remain in `PENDING_PAYMENT`
+- Admins can manually mark installments as paid in the admin dashboard
 - Payment-provider callbacks, reconciliation, and automatic status updates are intentionally marked as TODO
-- Order history is currently bound to the browser/device that placed the order
-- Clearing site cookies or switching devices removes access until authenticated customer accounts or OTP recovery are implemented
+- Customer order history is currently bound to the browser/device that placed the order
+- Clearing site cookies or switching devices removes customer order access until optional customer auth is added
 
 ## Production Database Deployment
 
@@ -244,10 +247,12 @@ Committed Prisma migrations must be applied before starting a new production rel
 ```bash
 pnpm db:deploy
 pnpm db:seed
-pnpm start
+pnpm start:storefront
+# and/or
+pnpm start:admin
 ```
 
-The seed command uses stable product IDs and upserts, so it is safe to run repeatedly. Keep `DATABASE_URL` in the deployment platform's secret manager and never expose it to the browser.
+The seed command upserts products and the admin user from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Keep secrets in the deployment platform's secret manager.
 
 ## Contributing
 
