@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -17,7 +17,6 @@ model ContactMessage {
   createdAt DateTime @default(now())
 }
 
-// Starter models — replace with your own
 model Category {
   id       String    @id @default(cuid())
   name     String    @unique
@@ -140,4 +139,14 @@ model InstallmentPayment {
 
   @@unique([orderId, installmentNumber])
   @@index([status, dueDate])
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+  updatedAt    DateTime  @updatedAt
 }

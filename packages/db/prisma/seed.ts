@@ -1,4 +1,6 @@
-import { prisma } from "../lib/prisma";
+import "dotenv/config";
+import bcrypt from "bcryptjs";
+import { prisma } from "../src/index";
 
 async function main() {
   const powerbanks = await prisma.category.upsert({
@@ -61,6 +63,19 @@ async function main() {
       create: { ...product, categoryId: powerbanks.id },
     });
   }
+
+  const adminEmail = (process.env.ADMIN_EMAIL || "admin@powerbankcameroon.com").toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD || "ChangeMe123!";
+  const adminName = process.env.ADMIN_NAME || "Powerbank Admin";
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+  await prisma.adminUser.upsert({
+    where: { email: adminEmail },
+    update: { name: adminName, passwordHash },
+    create: { email: adminEmail, name: adminName, passwordHash },
+  });
+
+  console.log(`Seeded catalog and admin user: ${adminEmail}`);
 }
 
 main()
