@@ -10,7 +10,7 @@ function startOfDaysAgo(days: number) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!getAdminSessionFromRequest(request)) return unauthorized()
+  if (!(await getAdminSessionFromRequest(request))) return unauthorized()
 
   try {
     const days = Math.min(90, Math.max(7, Number(request.nextUrl.searchParams.get('days') || 7)))

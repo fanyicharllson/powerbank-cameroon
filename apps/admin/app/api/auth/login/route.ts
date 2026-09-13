@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     await prisma.adminUser.update({ where: { id: admin.id }, data: { lastLoginAt: new Date() } })
 
-    const token = createSessionToken({ adminId: admin.id, email: admin.email, name: admin.name })
+    const token = await createSessionToken({ adminId: admin.id, email: admin.email, name: admin.name })
     const response = NextResponse.json({
       admin: { id: admin.id, email: admin.email, name: admin.name },
     })

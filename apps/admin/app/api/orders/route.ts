@@ -9,7 +9,7 @@ const paymentMethods: Record<string, string> = {
 }
 
 export async function GET(request: NextRequest) {
-  if (!getAdminSessionFromRequest(request)) return unauthorized()
+  if (!(await getAdminSessionFromRequest(request))) return unauthorized()
 
   try {
     const params = request.nextUrl.searchParams

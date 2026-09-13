@@ -7,7 +7,7 @@ export async function getAdminSessionFromCookies(): Promise<AdminSession | null>
   return verifySessionToken(jar.get(COOKIE_NAME)?.value)
 }
 
-export function getAdminSessionFromRequest(request: NextRequest): AdminSession | null {
+export async function getAdminSessionFromRequest(request: NextRequest): Promise<AdminSession | null> {
   return verifySessionToken(request.cookies.get(COOKIE_NAME)?.value)
 }
 

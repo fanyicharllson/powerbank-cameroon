@@ -11,7 +11,7 @@ const paymentMethods: Record<string, string> = {
 type Params = { params: Promise<{ orderNumber: string }> }
 
 export async function GET(request: NextRequest, context: Params) {
-  if (!getAdminSessionFromRequest(request)) return unauthorized()
+  if (!(await getAdminSessionFromRequest(request))) return unauthorized()
   const { orderNumber } = await context.params
 
   try {
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest, context: Params) {
 }
 
 export async function PATCH(request: NextRequest, context: Params) {
-  if (!getAdminSessionFromRequest(request)) return unauthorized()
+  if (!(await getAdminSessionFromRequest(request))) return unauthorized()
   const { orderNumber } = await context.params
 
   try {

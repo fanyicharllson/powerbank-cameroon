@@ -3,7 +3,7 @@ import { prisma } from '@stael/db'
 import { getAdminSessionFromRequest, unauthorized } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
-  if (!getAdminSessionFromRequest(request)) return unauthorized()
+  if (!(await getAdminSessionFromRequest(request))) return unauthorized()
 
   try {
     const q = (request.nextUrl.searchParams.get('q') || '').trim().toLowerCase()
